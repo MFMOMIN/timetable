@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Columns and Rows</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    form {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 10px;
+      background-color: #f2f2f2;
+      border-radius: 5px;
+    }
+
+    label, input {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th {
+      background-color: #fefefe;
+      color: rgb(0, 0, 0);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      font-weight: bold; /* Added to make the header bold */
+    }
+
+    thead tr {
+      position: relative;
+    }
+
+    tbody tr:first-child td {
+      background-color: #fefefe;
+      color: rgb(0, 0, 0);
+      font-weight: bold; /* Added to make the first row bold */
+    }
+
+    #submitCount {
+      margin-top: 10px;
+    }
+
+    .edit-row, .move-up, .move-down {
+      display: inline-block;
+      background-color: #007BFF;
+      color: #fff;
+      padding: 5px 10px;
+      border: none;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+
+    #downloadPdf {
+      margin-top: 20px;
+    }
+
+    #page3 {
+      display: none;
+    }
+
+    #tableContainer{
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Dynamic Columns and Rows</h2>
+
+  <!-- Page 1: Add Columns -->
+  <div id="page1">
+    <form id="columnsForm">
+      <label for="colCount">Number of Columns:</label>
+      <input type="number" id="colCount" name="colCount" placeholder="Enter number of columns" min="1" required>
+      <button type="button" id="nextPageBtn">Next</button>
+    </form>
+  </div>
+
+  <!-- Page 2: Add Rows -->
+  <div id="page2" style="display: none;">
+    <form id="dataForm">
+      <div id="dynamicInputs"></div>
+      <button type="button" id="submitBtn">Add to Table</button>
+      <button type="button" id="nextPage2Btn">Next</button>
+    </form>
+  </div>
+
+  <!-- Page 3: Display Table and Download PDF -->
+  <div id="page3">
+    <button type="button" id="downloadPdf">Download PDF</button>
+    <button type="button" id="backToPage2Btn">Back to Page 2</button>
+  </div>
+
+
+  <div id="submitCount" hidden></div>
+  
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+  <script src="https://rawgit.com/eKoopmans/html2pdf/master/dist/html2pdf.bundle.js"></script>
+
+ <!-- ... (previous HTML code) ... -->
+
+<script>
+  $(document).ready(function() {
+    var columnCount = 0;
+    var submitCount = 0;
+
+    // Event handler for navigating to the next page
+    $("#nextPageBtn").click(function() {
+      // Get the number of columns
+      columnCount = $("#colCount").val();
+
+      // Create input fields for each column on the next page
+      var columnInputs = "";
+      for (var i = 1; i <= columnCount; i++) {
+        columnInputs += '<label for="col' + i + '">Column ' + i + ':</label>';
+        columnInputs += '<input type="text" id="col' + i + '" name="col' + i + '" placeholder="Column ' + i + '" required>';
+      }
+
+      // Append inputs to the page
+      $("#dynamicInputs").html(columnInputs);
+
+      // Hide Page 1 and show Page 2
+      $("#page1").hide();
+      $("#page2").show();
+    });
+
+    // Event handler for submitting data to the table
+    $("#submitBtn").click(function() {
+      submitCount++; // Increment the submitCount variable on each click
+
+      var rowData = "<tr>";
+      for (var i = 1; i <= columnCount; i++) {
+        var value = $("#col" + i).val();
+        rowData += "<td>" + value + "</td>";
+      }
+
+      rowData += '<td><button class="edit-row">Edit</button> <button class="delete-row">Delete</button></td>';
+      rowData += '<td><button class="move-up">Move Up</button> <button class="move-down">Move Down</button></td>';
+      rowData += "</tr>";
+
+      // If it's the first row, append to the tbody, else append to thead
+      if ($("#dataTable thead tr").length === 0) {
+        console.log("Adding to thead");
+        $("#dataTable tbody").append(rowData);
+      } else {
+        $("#dataTable thead").append(rowData);
+      }
+
+      // Reset the form
+      $("#dataForm")[0].reset();
+
+      // Display the submit count
+      $("#submitCount").text("Submit Count: " + submitCount);
+    });
+
+    // Edit row
+    $("#dataTable").on("click", ".edit-row", function() {
+      var row = $(this).closest("tr");
+      var columns = row.find("td").length - 3; // Excluding edit, move up, move down columns
+
+      for (var i = 1; i <= columns; i++) {
+        var value = row.find("td:nth-child(" + i + ")").text();
+        $("#col" + i).val(value);
+      }
+
+      // Remove the edited row
+      row.remove();
+    });
+
+    $("#dataTable").on("click", ".delete-row", function() {
+      var row = $(this).closest("tr");
+      // var columns = row.find("td").length - 3; // Excluding edit, move up, move down columns
+
+      // for (var i = 1; i <= columns; i++) {
+      //   var value = row.find("td:nth-child(" + i + ")").text();
+      //   $("#col" + i).val(value);
+      // }
+
+      // Remove the edited row
+      row.remove();
+    });
+
+    // Move row up
+    $("#dataTable").on("click", ".move-up", function() {
+      var row = $(this).closest("tr");
+      row.insertBefore(row.prev());
+    });
+
+    // Move row down
+    $("#dataTable").on("click", ".move-down", function() {
+      var row = $(this).closest("tr");
+      row.insertAfter(row.next());
+    });
+
+    // Event handler for navigating to the next page (Page 2 to Page 3)
+    $("#nextPage2Btn").click(function() {
+      // Remove the last two columns
+      $("#dataTable tr td:last-child, #dataTable tr td:nth-last-child(2)").remove();
+
+      $("#page2").hide();
+      $("#page3").show();
+    });
+
+    $("#backToPage2Btn").click(function() {
+      $("#dataTable tr td:last-child, #dataTable tr td:nth-last-child(2)").add();
+      $("#page3").hide();
+      $("#page2").show();
+    });
+
+    // Event handler for downloading PDF
+    $("#downloadPdf").click(function() {
+      var element = document.getElementById("tableContainer");
+      html2pdf(element);
+    });
+  });
+</script>
+
+<!-- ... (remaining HTML code) ... -->
+
+ <div id="tableContainer">
+  <table id="dataTable">
+    <thead>
+      <!-- Header row will be dynamically added here -->
+    </thead>
+    <tbody>
+      <!-- Existing table rows go here, if any -->
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>
